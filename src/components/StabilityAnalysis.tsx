@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Line } from 'react-chartjs-2';
-import { Typography, Box, IconButton, Tooltip } from '@mui/material';
+import { Typography, Box, IconButton, Tooltip as MuiTooltip } from '@mui/material';
 import { Chart as ChartJS, ChartOptions, registerables } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Complex } from 'mathjs';
@@ -34,6 +34,28 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
   bode,
   roots,
 }) => {
+  const [zoomEnabled, setZoomEnabled] = useState(false);
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.ctrlKey || event.metaKey) {
+      setZoomEnabled(true);
+    }
+  };
+
+  const handleKeyUp = () => {
+    setZoomEnabled(false);
+  };
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+
   const nyquistData = {
     labels: nyquist.map((_, index) => index.toString()),
     datasets: [
@@ -82,15 +104,15 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     plugins: {
       zoom: {
         pan: {
-          enabled: true,
+          enabled: zoomEnabled,
           mode: 'xy' as const,
         },
         zoom: {
           wheel: {
-            enabled: true,
+            enabled: zoomEnabled,
           },
           pinch: {
-            enabled: true,
+            enabled: zoomEnabled,
           },
           mode: 'xy' as const,
         },
@@ -124,50 +146,59 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
 
       <div className="chart-container">
         <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
-          <Typography variant="h6">
-            Графік Найквіста
-          </Typography>
-          <Tooltip title="Завантажити графік">
+          <Typography variant="h6">Графік Найквіста</Typography>
+          <MuiTooltip title="Завантажити графік" placement="top">
             <IconButton onClick={() => downloadChart('nyquist-chart')} color="primary">
               <DownloadIcon />
             </IconButton>
-          </Tooltip>
+          </MuiTooltip>
         </Box>
-        <Box height="400px">
-          <Line id="nyquist-chart" data={nyquistData} options={chartOptions} />
-        </Box>
+        <MuiTooltip
+          title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
+          placement="top"
+        >
+          <Box height="400px">
+            <Line id="nyquist-chart" data={nyquistData} options={chartOptions} />
+          </Box>
+        </MuiTooltip>
       </div>
 
       <div className="chart-container">
         <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
-          <Typography variant="h6">
-            Графік Боде (Магнітуда)
-          </Typography>
-          <Tooltip title="Завантажити графік">
+          <Typography variant="h6">Графік Боде (Магнітуда)</Typography>
+          <MuiTooltip title="Завантажити графік" placement="top">
             <IconButton onClick={() => downloadChart('bode-magnitude-chart')} color="primary">
               <DownloadIcon />
             </IconButton>
-          </Tooltip>
+          </MuiTooltip>
         </Box>
-        <Box height="400px">
-          <Line id="bode-magnitude-chart" data={bodeMagnitudeData} options={chartOptions} />
-        </Box>
+        <MuiTooltip
+          title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
+          placement="top"
+        >
+          <Box height="400px">
+            <Line id="bode-magnitude-chart" data={bodeMagnitudeData} options={chartOptions} />
+          </Box>
+        </MuiTooltip>
       </div>
 
       <div className="chart-container">
         <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
-          <Typography variant="h6">
-            Графік Боде (Фаза)
-          </Typography>
-          <Tooltip title="Завантажити графік">
+          <Typography variant="h6">Графік Боде (Фаза)</Typography>
+          <MuiTooltip title="Завантажити графік" placement="top">
             <IconButton onClick={() => downloadChart('bode-phase-chart')} color="primary">
               <DownloadIcon />
             </IconButton>
-          </Tooltip>
+          </MuiTooltip>
         </Box>
-        <Box height="400px">
-          <Line id="bode-phase-chart" data={bodePhaseData} options={chartOptions} />
-        </Box>
+        <MuiTooltip
+          title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
+          placement="top"
+        >
+          <Box height="400px">
+            <Line id="bode-phase-chart" data={bodePhaseData} options={chartOptions} />
+          </Box>
+        </MuiTooltip>
       </div>
 
       {roots.length ? (
