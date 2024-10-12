@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Line } from 'react-chartjs-2';
-import { Typography, Box, IconButton, Tooltip as MuiTooltip } from '@mui/material';
+import { Line, Scatter } from 'react-chartjs-2';
+import {Typography, Box, IconButton, Tooltip as MuiTooltip, Divider} from '@mui/material';
 import { Chart as ChartJS, ChartOptions, registerables } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { Complex } from 'mathjs';
@@ -8,31 +8,44 @@ import DownloadIcon from '@mui/icons-material/Download';
 
 ChartJS.register(...registerables, zoomPlugin);
 
-interface NyquistDataPoint {
-  real: number;
-  imag: number;
+interface StepResponseData {
+  time: number[];
+  response: number[];
 }
 
-interface BodeData {
-  frequencies: number[];
-  magnitude: number[];
-  phase: number[];
+interface ImpulseResponseData {
+  time: number[];
+  response: number[];
+}
+
+interface PZMapData {
+  poles: Complex[];
+  zeros: Complex[];
 }
 
 interface StabilityAnalysisProps {
   stability: string;
   explanation: JSX.Element;
-  nyquist: NyquistDataPoint[];
-  bode: BodeData;
-  roots: Complex[];
+  stepResponse: StepResponseData;
+  impulseResponse: ImpulseResponseData;
+  pzMap: PZMapData;
+  isNonMinimumPhase: boolean;
+  selectedAnalyses: {
+    step: boolean;
+    impulse: boolean;
+    pzmap: boolean;
+    nonMinimumPhase: boolean;
+  };
 }
 
 const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
   stability,
   explanation,
-  nyquist,
-  bode,
-  roots,
+  stepResponse,
+  impulseResponse,
+  pzMap,
+  isNonMinimumPhase,
+  selectedAnalyses,
 }) => {
   const [zoomEnabled, setZoomEnabled] = useState(false);
 
@@ -56,56 +69,108 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     };
   }, []);
 
-  const nyquistData = {
-    labels: nyquist.map((_, index) => index.toString()),
+  const chartContainerStyle = {
+    width: '100%',
+    height: '400px',
+    '@media (max-width:600px)': {
+      height: '300px',
+    },
+  };
+
+  // Обчислюємо межі для осей
+  const allRe = [...pzMap.poles, ...pzMap.zeros].map(point => point.re);
+  const allIm = [...pzMap.poles, ...pzMap.zeros].map(point => point.im);
+
+  const xMin = Math.min(...allRe, -1) - 1;
+  const xMax = Math.max(...allRe, 1) + 1;
+  const yMin = Math.min(...allIm, -1) - 1;
+  const yMax = Math.max(...allIm, 1) + 1;
+
+  const stepResponseData = {
+    labels: stepResponse.time,
     datasets: [
       {
-        label: 'Найквіст',
-        data: nyquist.map((point) => ({ x: point.real, y: point.imag })),
-        borderColor: 'rgba(75, 192, 192, 1)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        label: 'Перехідна характеристика',
+        data: stepResponse.response,
+        borderColor: 'blue', // Синій колір, як у MATLAB
+        borderWidth: 2, // Товстіша лінія
+        backgroundColor: 'transparent',
         fill: false,
         showLine: true,
       },
     ],
   };
 
-  const bodeMagnitudeData = {
-    labels: bode.frequencies.map((freq) => freq.toFixed(2)),
+  // **Оновлені дані для імпульсної характеристики**
+  const impulseResponseData = {
+    labels: impulseResponse.time,
     datasets: [
       {
-        label: 'Магнітуда (дБ)',
-        data: bode.magnitude,
-        borderColor: 'rgba(255, 99, 132, 1)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        label: 'Імпульсна характеристика',
+        data: impulseResponse.response,
+        borderColor: 'red', // Червоний колір, як у MATLAB
+        borderWidth: 2, // Товстіша лінія
+        backgroundColor: 'transparent',
         fill: false,
         showLine: true,
       },
     ],
   };
 
-  const bodePhaseData = {
-    labels: bode.frequencies.map((freq) => freq.toFixed(2)),
+  const pzMapData = {
     datasets: [
+      // Додаємо осі
       {
-        label: 'Фаза (градуси)',
-        data: bode.phase,
-        borderColor: 'rgba(54, 162, 235, 1)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        fill: false,
+        label: '',
+        data: [{ x: xMin, y: 0 }, { x: xMax, y: 0 }],
+        borderColor: 'black',
+        borderWidth: 1,
         showLine: true,
+        fill: false,
+        pointRadius: 0,
+      },
+      {
+        label: '',
+        data: [{ x: 0, y: yMin }, { x: 0, y: yMax }],
+        borderColor: 'black',
+        borderWidth: 1,
+        showLine: true,
+        fill: false,
+        pointRadius: 0,
+      },
+      // Полюси
+      {
+        label: 'Полюси',
+        data: pzMap.poles.map(pole => ({ x: pole.re, y: pole.im })),
+        borderColor: 'red',
+        borderWidth: 2,
+        pointStyle: 'cross',
+        pointRadius: 8,
+        backgroundColor: 'transparent',
+      },
+      // Нулі
+      {
+        label: 'Нулі',
+        data: pzMap.zeros.map(zero => ({ x: zero.re, y: zero.im })),
+        backgroundColor: 'blue',
+        pointStyle: 'circle',
+        pointRadius: 6,
       },
     ],
   };
+
 
   const chartOptions: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
+      legend: {
+        display: false, // MATLAB зазвичай не відображає легенду на цих графіках
+      },
       zoom: {
         pan: {
           enabled: zoomEnabled,
-          mode: 'xy' as const,
+          mode: 'xy',
         },
         zoom: {
           wheel: {
@@ -114,13 +179,109 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
           pinch: {
             enabled: zoomEnabled,
           },
-          mode: 'xy' as const,
+          mode: 'xy',
+        },
+      },
+    },
+    animation: {
+      duration: 0, // Відключаємо анімацію для схожості з MATLAB
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Час (с)',
+        },
+        grid: {
+          color: '#e0e0e0',
+          drawOnChartArea: true,
+          drawTicks: true,
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: 'Амплітуда',
+        },
+        grid: {
+          color: '#e0e0e0',
+          drawOnChartArea: true,
+          drawTicks: true,
+        },
+      },
+    },
+    elements: {
+      line: {
+        tension: 0, // Без інтерполяції, пряма лінія між точками
+      },
+      point: {
+        radius: 0, // Прибираємо точки даних
+      },
+    },
+  };
+
+  const scatterChartOptions: ChartOptions<'scatter'> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: {
+          font: {
+            size: 14,
+          },
+        },
+      },
+      tooltip: {
+        enabled: true,
+      },
+      zoom: {
+        pan: {
+          enabled: zoomEnabled,
+          mode: 'xy',
+        },
+        zoom: {
+          wheel: {
+            enabled: zoomEnabled,
+          },
+          pinch: {
+            enabled: zoomEnabled,
+          },
+          mode: 'xy',
         },
       },
     },
     animation: {
       duration: 1000,
       easing: 'easeOutBounce',
+    },
+    scales: {
+      x: {
+        type: 'linear',
+        position: 'bottom',
+        title: {
+          display: true,
+          text: 'Дійсна частина',
+        },
+        grid: {
+          color: '#e0e0e0',
+        },
+        min: xMin,
+        max: xMax,
+      },
+      y: {
+        type: 'linear',
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Уявна частина',
+        },
+        grid: {
+          color: '#e0e0e0',
+        },
+        min: yMin,
+        max: yMax,
+      },
     },
   };
 
@@ -134,87 +295,167 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     }
   };
 
+  const formatComplexNumber = (complex: Complex) => {
+    const re = complex.re !== undefined ? complex.re.toFixed(5) : '0';
+    let im = '';
+    if (complex.im !== undefined && complex.im !== 0) {
+      const sign = complex.im >= 0 ? ' + ' : ' - ';
+      im = `${sign}${Math.abs(complex.im).toFixed(5)}i`;
+    }
+    return `s = ${re}${im}`;
+  };
+
+  const summary = <>
+    Система визначена як <strong>{stability.toLowerCase()}</strong>. Аналіз полюсів і нулів вказує на те, що система є  <strong>{isNonMinimumPhase ? 'не мінімально фазовою' : 'мінімально фазовою'}</strong>.
+  </>;
+
+  const conclusion = (
+    <Box mt={4}>
+      <Typography variant="h6" fontWeight={700}>
+        Висновок:
+      </Typography>
+      <Typography variant="body1" paragraph>
+        Система демонструє {stability.toLowerCase()} поведінку на основі аналізу полюсів і нулів. Полюси розташовані {pzMap.poles.length > 0 ? 'в лівій частині комплексної площини' : 'не знайдені'}, що вказує на її {stability.toLowerCase()}. {isNonMinimumPhase ? 'Однак система є не мінімально фазовою, що може впливати на її динамічну поведінку.' : 'Система також є мінімально фазовою, що сприяє покращеній динамічній поведінці.'}
+      </Typography>
+    </Box>
+  );
+
+
   return (
-    <Box mt={4} id="analysis-results">
+    <Box id="analysis-results">
       <Typography variant="h5" fontWeight={700} gutterBottom>
-        Система {stability.toLowerCase()}
+        Аналіз стійкості:
       </Typography>
 
-      <Typography variant="body1" paragraph style={{ marginTop: '1rem' }}>
-        {explanation}
+      <Typography variant="body1" paragraph mt={2}>
+        {summary}
       </Typography>
 
-      <div className="chart-container">
-        <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
-          <Typography variant="h6">Графік Найквіста</Typography>
-          <MuiTooltip title="Завантажити графік" placement="top">
-            <IconButton onClick={() => downloadChart('nyquist-chart')} color="primary">
-              <DownloadIcon />
-            </IconButton>
-          </MuiTooltip>
-        </Box>
-        <MuiTooltip
-          title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
-          placement="top"
-        >
-          <Box height="400px">
-            <Line id="nyquist-chart" data={nyquistData} options={chartOptions} />
-          </Box>
-        </MuiTooltip>
-      </div>
+      {selectedAnalyses.pzmap && (
+        <>
+          <Box mt={4}>
+            <Typography variant="h6">Нулі передавальної функції</Typography>
+            {pzMap.zeros.length > 0 ? (
+              pzMap.zeros.map((zero, index) => (
+                <Typography key={index}>{formatComplexNumber(zero)}</Typography>
+              ))
+            ) : (
+              <Typography>Нулі не знайдені</Typography>
+            )}
 
-      <div className="chart-container">
-        <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
-          <Typography variant="h6">Графік Боде (Магнітуда)</Typography>
-          <MuiTooltip title="Завантажити графік" placement="top">
-            <IconButton onClick={() => downloadChart('bode-magnitude-chart')} color="primary">
-              <DownloadIcon />
-            </IconButton>
-          </MuiTooltip>
-        </Box>
-        <MuiTooltip
-          title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
-          placement="top"
-        >
-          <Box height="400px">
-            <Line id="bode-magnitude-chart" data={bodeMagnitudeData} options={chartOptions} />
+            <Typography variant="h6" mt={2}>
+              Полюси передавальної функції
+            </Typography>
+            {pzMap.poles.length > 0 ? (
+              pzMap.poles.map((pole, index) => (
+                <Typography key={index}>{formatComplexNumber(pole)}</Typography>
+              ))
+            ) : (
+              <Typography>Полюси не знайдені</Typography>
+            )}
           </Box>
-        </MuiTooltip>
-      </div>
 
-      <div className="chart-container">
-        <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
-          <Typography variant="h6">Графік Боде (Фаза)</Typography>
-          <MuiTooltip title="Завантажити графік" placement="top">
-            <IconButton onClick={() => downloadChart('bode-phase-chart')} color="primary">
-              <DownloadIcon />
-            </IconButton>
-          </MuiTooltip>
-        </Box>
-        <MuiTooltip
-          title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
-          placement="top"
-        >
-          <Box height="400px">
-            <Line id="bode-phase-chart" data={bodePhaseData} options={chartOptions} />
-          </Box>
-        </MuiTooltip>
-      </div>
+          <div className="chart-container">
+            <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
+              <Typography variant="h6">Розташування полюсів і нулів на комплексній площині</Typography>
+              <MuiTooltip title="Завантажити графік" placement="top">
+                <IconButton onClick={() => downloadChart('pzmap-chart')} color="primary">
+                  <DownloadIcon />
+                </IconButton>
+              </MuiTooltip>
+            </Box>
+            <MuiTooltip
+              title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
+              placement="top"
+            >
+              <Box sx={chartContainerStyle}>
+                <Scatter id="pzmap-chart" data={pzMapData} options={scatterChartOptions} />
+              </Box>
+            </MuiTooltip>
+          </div>
+        </>
+      )}
 
-      {roots.length ? (
+      {selectedAnalyses.nonMinimumPhase && (
         <>
           <Typography variant="h6" mt={4}>
-            Корені характеристичного рівняння:
+            Аналіз не мінімально фазових систем
           </Typography>
-          <Box mt={2}>
-            {roots.map((root, index) => (
-              <Typography key={index}>
-                Корінь {index + 1}: {root.re?.toFixed(2)} + {root.im?.toFixed(2)}i
-              </Typography>
-            ))}
-          </Box>
+          <Typography variant="body1" paragraph mt={2}>
+            {isNonMinimumPhase ? 'Система є не мінімально фазовою.' : 'Система є мінімально фазовою.'}
+          </Typography>
         </>
-      ) : null}
+      )}
+
+      {(selectedAnalyses.step || selectedAnalyses.impulse) && (
+        <>
+          <Divider/>
+          <Typography variant="h5" mt={4} fontWeight={700}>Динамічна поведінка системи:</Typography>
+        </>
+      )}
+
+      {selectedAnalyses.step && (
+        <div className="chart-container">
+          <Box display="flex" justifyContent="space-between" mt={4} mb={4} alignItems="center">
+            <Typography variant="h6">Перехідна характеристика</Typography>
+            <MuiTooltip title="Завантажити графік" placement="top">
+              <IconButton onClick={() => downloadChart('step-response-chart')} color="primary">
+                <DownloadIcon />
+              </IconButton>
+            </MuiTooltip>
+          </Box>
+          <MuiTooltip
+            title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
+            placement="top"
+          >
+            <Box sx={chartContainerStyle}>
+              <Line id="step-response-chart" data={stepResponseData} options={chartOptions} />
+            </Box>
+          </MuiTooltip>
+        </div>
+      )}
+
+      {selectedAnalyses.impulse && (
+        <div className="chart-container">
+          <Box display="flex" justifyContent="space-between" mt={4} mb={4} alignItems="center">
+            <Typography variant="h6">Імпульсна характеристика</Typography>
+            <MuiTooltip title="Завантажити графік" placement="top">
+              <IconButton onClick={() => downloadChart('impulse-response-chart')} color="primary">
+                <DownloadIcon />
+              </IconButton>
+            </MuiTooltip>
+          </Box>
+          <MuiTooltip
+            title="Для зуму/панорамування використовуйте Ctrl (або Cmd) + Прокрутка/Перетягування"
+            placement="top"
+          >
+            <Box sx={chartContainerStyle} mb={4}>
+              <Line id="impulse-response-chart" data={impulseResponseData} options={chartOptions} />
+            </Box>
+          </MuiTooltip>
+        </div>
+      )}
+
+      <Divider/>
+
+      <Box mt={4}>
+        <Typography variant="h6" fontWeight={700}>
+          Висновок:
+        </Typography>
+        <Typography variant="body1" paragraph mt={2}>
+          Система демонструє <strong>{stability.toLowerCase()}</strong> поведінку на основі аналізу полюсів і нулів.
+          Полюси розташовані <strong>
+          {pzMap.poles.length === 0
+            ? 'не знайдені'
+            : pzMap.poles.every(pole => pole.re < 0)
+              ? 'в лівій частині комплексної площини'
+              : 'в правій частині комплексної площини'}
+          </strong>, що вказує на її <strong>{stability.toLowerCase()}</strong>.
+          {isNonMinimumPhase
+            ? ' Однак система є не мінімально фазовою, що може впливати на її динамічну поведінку.'
+            : ' Система також є мінімально фазовою, що сприяє покращеній динамічній поведінці.'}
+        </Typography>
+      </Box>
     </Box>
   );
 };

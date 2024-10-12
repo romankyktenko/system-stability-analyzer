@@ -1,5 +1,7 @@
+// TransferFunctionInput.tsx
+
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton, Snackbar, Alert } from '@mui/material';
+import { TextField, Button, Box, Dialog, DialogTitle, DialogContent, DialogActions, Typography, IconButton, Snackbar, Alert, Tooltip } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import 'katex/dist/katex.min.css';
 import { BlockMath } from 'react-katex';
@@ -24,6 +26,9 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [functionToDelete, setFunctionToDelete] = useState<SavedFunction | null>(null);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [hasPlaceholders, setHasPlaceholders] = useState(false);
+  const [numeratorError, setNumeratorError] = useState('');
+  const [denominatorError, setDenominatorError] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('savedTransferFunctions');
@@ -31,6 +36,15 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
       setSavedFunctions(JSON.parse(saved));
     }
   }, []);
+
+  useEffect(() => {
+    // Логіка перевірки на наявність плейсхолдерів при зміні чисельника або знаменника
+    const numArray = numerator.split(',').map(coef => coef.trim());
+    const denArray = denominator.split(',').map(coef => coef.trim());
+
+    const hasInvalidCoeffs = [...numArray, ...denArray].some(coef => isNaN(Number(coef)) || coef === '');
+    setHasPlaceholders(hasInvalidCoeffs);
+  }, [numerator, denominator]);
 
   const handleSave = () => {
     const name = renderTransferFunction();
@@ -81,21 +95,49 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
   };
 
   const handleSubmit = () => {
-    if (numerator && denominator) {
-      setError(false);
-      setSelectedFunction(''); // Скидає вибрану функцію, щоб уникнути дублювання формули
-      onSubmit(numerator, denominator);
-    } else {
-      setError(true);
+    let hasError = false;
+    setNumeratorError('');
+    setDenominatorError('');
+
+    if (!numerator) {
+      setNumeratorError('Чисельник не може бути порожнім');
+      hasError = true;
+    } else if (!validateCoefficients(numerator)) {
+      setNumeratorError('Некоректні коефіцієнти чисельника');
+      hasError = true;
     }
+
+    if (!denominator) {
+      setDenominatorError('Знаменник не може бути порожнім');
+      hasError = true;
+    } else if (!validateCoefficients(denominator)) {
+      setDenominatorError('Некоректні коефіцієнти знаменника');
+      hasError = true;
+    }
+
+    if (hasError) {
+      setError(true);
+    } else {
+      setError(false);
+      setSelectedFunction('');
+      onSubmit(numerator, denominator);
+    }
+  };
+
+  const validateCoefficients = (input: string): boolean => {
+    const coeffs = input.split(',').map((coef) => coef.trim());
+    return coeffs.every((coef) => !isNaN(Number(coef)) && coef !== '');
   };
 
   const renderTransferFunction = (): string => {
     if (numerator && denominator) {
-      const formatCoeffs = (coeffs: string[], isNumerator: boolean) => {
+      const formatCoeffs = (coeffs: string[]) => {
         return coeffs
           .map((coef, idx) => {
-            const sign = Number(coef) >= 0 && idx !== 0 ? ' + ' : ' - ';
+            if (isNaN(Number(coef)) || coef === '') {
+              return '...';
+            }
+            const sign = idx === 0 ? (Number(coef) < 0 ? '-' : '') : (Number(coef) >= 0 ? ' + ' : ' - ');
             const absCoef = Math.abs(Number(coef));
             const power = coeffs.length - 1 - idx;
             if (power === 0) return `${sign}${absCoef}`;
@@ -108,8 +150,8 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
       const numArray = numerator.split(',').map(coef => coef.trim());
       const denArray = denominator.split(',').map(coef => coef.trim());
 
-      const numString = formatCoeffs(numArray, true);
-      const denString = formatCoeffs(denArray, false);
+      const numString = formatCoeffs(numArray);
+      const denString = formatCoeffs(denArray);
 
       return `\\frac{${numString}}{${denString}}`;
     }
@@ -135,6 +177,17 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
 
   return (
     <Box>
+      <Typography variant="h5" gutterBottom>
+        Введіть передавальну функцію для аналізу стійкості системи:
+      </Typography>
+
+      <Typography variant="body1" color="textSecondary" gutterBottom>
+        Введіть коефіцієнти чисельника та знаменника у вигляді чисел, розділених комами. Наприклад, для функції:
+        <br />
+        <BlockMath math="\frac{5s^2 + 2s + 3}{s^2 + 3s + 1}" />
+        Введіть чисельник як "5,2,3", а знаменник як "1,3,1".
+      </Typography>
+
       <TextField
         label="Чисельник"
         variant="outlined"
@@ -142,8 +195,8 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
         margin="normal"
         value={numerator}
         onChange={(e) => setNumerator(e.target.value)}
-        error={error && !numerator}
-        helperText={error && !numerator ? 'Чисельник не може бути порожнім' : ''}
+        error={!!numeratorError}
+        helperText={numeratorError}
       />
       <TextField
         label="Знаменник"
@@ -152,30 +205,44 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
         margin="normal"
         value={denominator}
         onChange={(e) => setDenominator(e.target.value)}
-        error={error && !denominator}
-        helperText={error && !denominator ? 'Знаменник не може бути порожнім' : ''}
+        error={!!denominatorError}
+        helperText={denominatorError}
       />
       <Box
-         sx={{
-           display: 'flex',
-           flexDirection: {
-             xs: 'column',
-             sm: 'row',
-           },
-           alignItems: 'center',
-           gap: 2,
-           mt: 2
-         }}
+        sx={{
+          display: 'flex',
+          flexDirection: {
+            xs: 'column',
+            sm: 'row',
+          },
+          alignItems: 'center',
+          gap: 2,
+          mt: 2
+        }}
       >
-        <Button sx={{ width: '100%' }} variant="contained" color="primary" onClick={handleSubmit}>
-          Аналізувати
-        </Button>
-        <Button sx={{ width: '100%' }} variant="outlined" onClick={handleSave}>
-          Зберегти
-        </Button>
-        <Button sx={{ width: '100%' }} variant="outlined" color="info" onClick={handleOpenModal}>
-          Збережені функції
-        </Button>
+        <Tooltip disableHoverListener={!hasPlaceholders} title={"Передавальна функція введена некоректно"}>
+          <Box sx={{width: '100%'}}>
+            <Button
+              sx={{width: '100%'}}
+              variant="contained"
+              color="primary"
+              onClick={handleSubmit}
+              disabled={hasPlaceholders}
+            >
+              Аналізувати
+            </Button>
+          </Box>
+        </Tooltip>
+        <Tooltip title="Зберегти введену передавальну функцію">
+          <Button sx={{ width: '100%' }} variant="outlined" onClick={handleSave}>
+            Зберегти
+          </Button>
+        </Tooltip>
+        <Tooltip title="Відкрити список збережених передавальних функцій">
+          <Button sx={{ width: '100%' }} variant="outlined" color="info" onClick={handleOpenModal}>
+            Збережені функції
+          </Button>
+        </Tooltip>
       </Box>
 
       <Dialog open={modalOpen} onClose={handleCloseModal}>
@@ -198,7 +265,7 @@ const TransferFunctionInput: React.FC<TransferFunctionInputProps> = ({ onSubmit 
                 </Button>
                 <IconButton
                   size="small"
-                  sx={{ color: 'primary.main', ml: '1rem' }} // Синій колір для кнопки видалення
+                  sx={{ color: 'primary.main', ml: '1rem' }}
                   onClick={() => handleDelete(func.name)}
                 >
                   <DeleteIcon />

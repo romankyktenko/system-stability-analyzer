@@ -9,3 +9,4 @@ declare module '*.jpg' {
 }
 
 declare module 'react-katex';
+declare module 'numeric';

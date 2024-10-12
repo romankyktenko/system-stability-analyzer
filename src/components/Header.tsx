@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, IconButton, Box } from '@mui/material';
+import {AppBar, Toolbar, Typography, IconButton, Box, Button} from '@mui/material';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import HeaderBackground from '../images/header-background.jpg';
 
@@ -47,10 +47,12 @@ const Header: React.FC<HeaderProps> = ({ onHelpClick }) => {
           <Typography variant="h6" component="div" style={{ fontWeight: 'bold' }}>
             Stability Analyzer
           </Typography>
-          <IconButton color="inherit" onClick={onHelpClick} sx={{ marginLeft: 2 }}>
-            <HelpOutlineIcon />
-          </IconButton>
         </Box>
+
+        <Button color="inherit" variant={'outlined'} onClick={onHelpClick} sx={{ marginLeft: 2, position: 'absolute', right: '2rem', top: '50%', padding: '5px 10px', transform: 'translate(0, -50%)' }}>
+          <HelpOutlineIcon />
+          <Typography fontSize={12} ml={1}>Довідка</Typography>
+        </Button>
       </Toolbar>
       <style>
         {`
