@@ -443,14 +443,14 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
           Висновок:
         </Typography>
         <Typography variant="body1" paragraph mt={2}>
-          Система демонструє <strong>{stability.toLowerCase()}</strong> поведінку на основі аналізу полюсів і нулів.
+          Система демонструє <strong>{stability === 'Стійка' ? 'стійку' : 'нестійку'}</strong> поведінку на основі аналізу полюсів і нулів.
           Полюси розташовані <strong>
           {pzMap.poles.length === 0
             ? 'не знайдені'
             : pzMap.poles.every(pole => pole.re < 0)
               ? 'в лівій частині комплексної площини'
               : 'в правій частині комплексної площини'}
-          </strong>, що вказує на її <strong>{stability.toLowerCase()}</strong>.
+          </strong>, що вказує на її <strong>{stability === 'Стійка' ? 'стійкість' : 'нестійкість'}</strong>.
           {isNonMinimumPhase
             ? ' Однак система є не мінімально фазовою, що може впливати на її динамічну поведінку.'
             : ' Система також є мінімально фазовою, що сприяє покращеній динамічній поведінці.'}
