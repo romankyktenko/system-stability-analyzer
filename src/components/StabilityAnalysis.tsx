@@ -77,7 +77,6 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     },
   };
 
-  // Обчислюємо межі для осей
   const allRe = [...pzMap.poles, ...pzMap.zeros].map(point => point.re);
   const allIm = [...pzMap.poles, ...pzMap.zeros].map(point => point.im);
 
@@ -92,8 +91,8 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
       {
         label: 'Перехідна характеристика',
         data: stepResponse.response,
-        borderColor: 'blue', // Синій колір, як у MATLAB
-        borderWidth: 2, // Товстіша лінія
+        borderColor: 'blue',
+        borderWidth: 2,
         backgroundColor: 'transparent',
         fill: false,
         showLine: true,
@@ -101,15 +100,14 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     ],
   };
 
-  // **Оновлені дані для імпульсної характеристики**
   const impulseResponseData = {
     labels: impulseResponse.time,
     datasets: [
       {
         label: 'Імпульсна характеристика',
         data: impulseResponse.response,
-        borderColor: 'red', // Червоний колір, як у MATLAB
-        borderWidth: 2, // Товстіша лінія
+        borderColor: 'red',
+        borderWidth: 2,
         backgroundColor: 'transparent',
         fill: false,
         showLine: true,
@@ -119,7 +117,6 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
 
   const pzMapData = {
     datasets: [
-      // Додаємо осі
       {
         label: '',
         data: [{ x: xMin, y: 0 }, { x: xMax, y: 0 }],
@@ -138,7 +135,6 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
         fill: false,
         pointRadius: 0,
       },
-      // Полюси
       {
         label: 'Полюси',
         data: pzMap.poles.map(pole => ({ x: pole.re, y: pole.im })),
@@ -148,7 +144,6 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
         pointRadius: 8,
         backgroundColor: 'transparent',
       },
-      // Нулі
       {
         label: 'Нулі',
         data: pzMap.zeros.map(zero => ({ x: zero.re, y: zero.im })),
@@ -165,7 +160,7 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false, // MATLAB зазвичай не відображає легенду на цих графіках
+        display: false,
       },
       zoom: {
         pan: {
@@ -184,7 +179,7 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
       },
     },
     animation: {
-      duration: 0, // Відключаємо анімацію для схожості з MATLAB
+      duration: 0,
     },
     scales: {
       x: {
@@ -212,10 +207,10 @@ const StabilityAnalysis: React.FC<StabilityAnalysisProps> = ({
     },
     elements: {
       line: {
-        tension: 0, // Без інтерполяції, пряма лінія між точками
+        tension: 0,
       },
       point: {
-        radius: 0, // Прибираємо точки даних
+        radius: 0,
       },
     },
   };

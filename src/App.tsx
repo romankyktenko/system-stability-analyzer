@@ -1,5 +1,3 @@
-// App.tsx
-
 import React, { useState } from 'react';
 import Header from './components/Header';
 import HelpModal from './components/HelpModal';
@@ -20,12 +18,14 @@ import {
   CardContent,
   CardHeader,
   Collapse,
-  IconButton, Tooltip, Divider,
+  IconButton,
+  Divider,
 } from '@mui/material';
 import useStabilityAnalysis from './hooks/useStabilityAnalysis';
 import usePdfExport from './hooks/usePdfExport';
 import { useExportToMatlab } from './hooks/useExportToMatlab';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import MethodsSelect from './components/MethodsSelect';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -35,7 +35,6 @@ const App: React.FC = () => {
   const [numArray, setNumArray] = useState<number[]>([]);
   const [denArray, setDenArray] = useState<number[]>([]);
 
-  // Стан для вибору аналізів для виконання
   const [selectedAnalyses, setSelectedAnalyses] = useState({
     step: true,
     impulse: true,
@@ -43,7 +42,6 @@ const App: React.FC = () => {
     nonMinimumPhase: true,
   });
 
-  // Стан для вибору аналізів для експорту в MATLAB
   const [exportAnalyses, setExportAnalyses] = useState({
     step: true,
     impulse: true,
@@ -54,7 +52,7 @@ const App: React.FC = () => {
   const { exportToPDF } = usePdfExport();
   const { exportToMatlab } = useExportToMatlab();
 
-  const [expanded, setExpanded] = useState(true); // Результати відкриті за замовчуванням
+  const [expanded, setExpanded] = useState(true);
 
   const handleAnalyze = (numerator: string, denominator: string) => {
     setLoading(true);
@@ -111,51 +109,9 @@ const App: React.FC = () => {
       <Container maxWidth="md" style={{ marginTop: '2rem' }}>
         <TransferFunctionInput onSubmit={handleAnalyze} />
 
-        {/* Секція опцій аналізу */}
-        <Card sx={{ mt: 4 }}>
-          <CardHeader title="Оберіть типи аналізу для виконання" />
-          <Divider/>
-          <CardContent>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={selectedAnalyses.step}
-                  onChange={() => handleAnalysisChange('step')}
-                />
-              }
-              label="Перехідна характеристика"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={selectedAnalyses.impulse}
-                  onChange={() => handleAnalysisChange('impulse')}
-                />
-              }
-              label="Імпульсна характеристика"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={selectedAnalyses.pzmap}
-                  onChange={() => handleAnalysisChange('pzmap')}
-                />
-              }
-              label="Полюси та нулі (PZMap)"
-            />
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={selectedAnalyses.nonMinimumPhase}
-                  onChange={() => handleAnalysisChange('nonMinimumPhase')}
-                />
-              }
-              label="Аналіз не мінімально фазової системи"
-            />
-          </CardContent>
-        </Card>
+        {/* @ts-ignore */}
+        <MethodsSelect handleAnalysisChange={handleAnalysisChange} selectedAnalyses={selectedAnalyses}/>
 
-        {/* Індикатор прогресу */}
         {loading && (
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
             <CircularProgress />
@@ -164,7 +120,6 @@ const App: React.FC = () => {
 
         {results && !loading && (
           <>
-            {/* Секція результатів */}
             <Card sx={{ mt: 4 }}>
               <CardHeader
                 title="Результати аналізу"
@@ -201,7 +156,6 @@ const App: React.FC = () => {
 
             {results && (
               <>
-                {/* Секція експорту в MATLAB */}
                 <Card sx={{ mt: 4 }}>
                   <CardHeader title="Експорт в MATLAB" />
                   <Divider/>

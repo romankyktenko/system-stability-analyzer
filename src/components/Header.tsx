@@ -47,12 +47,11 @@ const Header: React.FC<HeaderProps> = ({ onHelpClick }) => {
           <Typography variant="h6" component="div" style={{ fontWeight: 'bold' }}>
             Stability Analyzer
           </Typography>
+          <Button color="inherit" variant={'outlined'} onClick={onHelpClick} sx={{ marginLeft: 4}}>
+            <HelpOutlineIcon />
+            <Typography fontSize={12} ml={1}>Довідка</Typography>
+          </Button>
         </Box>
-
-        <Button color="inherit" variant={'outlined'} onClick={onHelpClick} sx={{ marginLeft: 2, position: 'absolute', right: '2rem', top: '50%', padding: '5px 10px', transform: 'translate(0, -50%)' }}>
-          <HelpOutlineIcon />
-          <Typography fontSize={12} ml={1}>Довідка</Typography>
-        </Button>
       </Toolbar>
       <style>
         {`
