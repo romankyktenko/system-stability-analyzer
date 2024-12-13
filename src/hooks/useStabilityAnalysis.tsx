@@ -52,18 +52,20 @@ const useStabilityAnalysis = () => {
       poles,
     };
 
-    const isStable = poles.every(pole => pole.re < 0);
+    const isUnstable = poles.some(pole => pole.re > 0);
+    const isOnTheEdge = !isUnstable && poles.some(pole => pole.re === 0);
+    const isStable = !isUnstable && !isOnTheEdge; // Система стійка, якщо ні нестійка, ні на межі
 
-    const stability = isStable ? 'Стійка' : 'Нестійка';
+    const stability = isStable ? 'Стійка' : isUnstable ? 'Нестійка' : 'На межі стійкості';
 
+    // Логіка мінімально фазової системи лишається аналогічною: 
+    // Система може бути мінімально фазовою лише якщо вона стійка (усі полюси < 0) та всі нулі <0
     const isMinimumPhase = isStable && zeros.every(zero => zero.re < 0);
-
     const isNonMinimumPhase = !isMinimumPhase;
 
     const summaryText = `Система визначена як ${stability.toLowerCase()}. Аналіз полюсів і нулів вказує на те, що система є ${
       isNonMinimumPhase ? 'не мінімально фазовою' : 'мінімально фазовою'
     }.`;
-
 
     const explanation = (
       <div>
@@ -247,40 +249,70 @@ const useStabilityAnalysis = () => {
     return y;
   };
 
+  const trimStableResponse = (
+    time: number[],
+    response: number[],
+    threshold: number = 0.001, // допустима зміна сигналу
+    stableTime: number = 5     // час, протягом якого сигнал має бути стабільним
+  ) => {
+    const finalVal = response[response.length - 1];
+    const dt = time[1] - time[0];
+    const stableSamples = Math.floor(stableTime / dt);
+
+    let lastChangeIndex = response.length - 1;
+    for (let i = response.length - 1; i >= 0; i--) {
+      if (Math.abs(response[i] - finalVal) > threshold) {
+        lastChangeIndex = i;
+        break;
+      }
+    }
+
+    const endIndex = Math.min(lastChangeIndex + stableSamples, response.length - 1);
+
+    return {
+      time: time.slice(0, endIndex + 1),
+      response: response.slice(0, endIndex + 1)
+    };
+  };
 
   const calculateStepResponse = (numCoeffs: number[], denCoeffs: number[]): StepResponseData => {
-    const tFinal = 10;
+    const tFinal = 120;
     const dt = 0.01;
     const time = numeric.linspace(0, tFinal, tFinal / dt + 1);
-
-    // Створюємо модель станів
+    
     const { A, B, C, D } = createStateSpaceModel(numCoeffs, denCoeffs);
-
-    // Вхідний сигнал - одиничний стрибок
+    
     const u = time.map(() => 1);
-
-    // Обчислюємо реакцію системи
     const response = simulateSystemResponse(A, B, C, D, u, time);
 
-    return { time, response };
+    // Обрізаємо стабільну частину
+    const trimmed = trimStableResponse(time, response, 0.001, 5);
+    
+    return {
+      time: trimmed.time,
+      response: trimmed.response
+    };
   };
 
   const calculateImpulseResponse = (numCoeffs: number[], denCoeffs: number[]): ImpulseResponseData => {
-    const tFinal = 10;
+    const tFinal = 60;
     const dt = 0.01;
     const time = numeric.linspace(0, tFinal, tFinal / dt + 1);
 
-    // Створюємо модель станів
     const { A, B, C, D } = createStateSpaceModel(numCoeffs, denCoeffs);
-
-    // Вхідний сигнал - дельта-імпульс (апроксимуємо його вузьким імпульсом)
+    
     const u = time.map((t: number) => (t === 0 ? 1 / dt : 0));
-
-    // Обчислюємо реакцію системи
     const response = simulateSystemResponse(A, B, C, D, u, time);
 
-    return { time, response };
+    // Обрізаємо стабільну частину
+    const trimmed = trimStableResponse(time, response, 0.001, 5);
+
+    return {
+      time: trimmed.time,
+      response: trimmed.response
+    };
   };
+
 
   return {
     fullAnalysis,
